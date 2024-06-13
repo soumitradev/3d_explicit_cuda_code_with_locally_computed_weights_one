@@ -1,0 +1,313 @@
+module device_q_derivatives_mod
+
+
+   use device_data_structure_mod
+   use device_q_variables_mod
+
+contains
+!
+!
+   attributes(global)	subroutine device_eval_q_derivatives(qm_d, q_d,nbhs_d, conn_d, dq_d, x_d)
+!
+!
+   implicit none
+!
+!
+   integer :: i, j, k, r, nbh
+   real*8 :: x_i, y_i, z_i, x_k, y_k, z_k
+   real*8 :: delx, dely, delz, dist, weights
+   real*8 :: sum_delx_sqr, sum_dely_sqr, sum_delz_sqr
+   real*8 :: sum_delx_dely, sum_dely_delz, sum_delz_delx
+   real*8 :: sum_delx_delq(5), sum_dely_delq(5), sum_delz_delq(5)
+   real*8 :: det, one_by_det
+   real*8 :: temp(5), qtilde_i(5), qtilde_nbh(5)
+
+   real*8 :: temp_d(:, :, :), dq_d(:, :, :), x_d(:, :), q_d(:, :), qm_d(:, :, :)
+   integer :: conn_d(:, :), nbhs_d(:)
+   real*8 :: x_derivative_weights_d(:,:)
+   real*8 :: y_derivative_weights_d(:,:)
+!
+   real*8, dimension(:,:,:) :: dq_temp_d
+
+!
+!
+   i = (blockIdx%x - 1)*blockDim%x + threadIdx%x
+   if (i > max_points_d) return
+
+
+
+   if(second_order_flag_d .eq. 0) then
+
+      qm_d(1, :, i) = q_d(:, i)	! q_maximum ..
+      qm_d(2, :, i) = q_d(:, i)	! q_minimum ..
+
+!
+      do k = 1, nbhs_d(i)
+         nbh = conn_d(k,i)
+         do r = 1, 5
+            if(q_d(r,nbh) > qm_d(1,r,i)) then
+               qm_d(1,r,i) = q_d(r,nbh)
+            end if
+            if(q_d(r,nbh) < qm_d(2,r,i)) then
+               qm_d(2,r,i) = q_d(r,nbh)
+            end if
+         end do
+      enddo
+!
+      dq_d(1,:,i) = 0.0d0
+      dq_d(2,:,i) = 0.0d0
+      dq_d(3,:,i) = 0.0d0
+!
+
+!
+!
+   else if(second_order_flag_d .eq. 1) then
+!
+      ! if(i == 5) then
+      ! 	write(*,*)'second_order_flag_d',second_order_flag_d
+      ! 	write(*,*)'max_points_d',max_points_d
+      ! end if
+!
+      x_i = x_d(1,i)
+      y_i = x_d(2,i)
+      z_i = x_d(3,i)
+
+      ! if(i == 83780) then ! there is no issue
+      ! 	write(*,*)'second_order_flag_d',second_order_flag_d
+      ! 	write(*,*)'max_points_d',max_points_d
+      ! 	write(*,*)' x_d(1,i)', x_d(1,i)
+      ! 	write(*,*)' x_d(2,i)', x_d(2,i)
+      ! 	write(*,*)'x_d(3,i)',x_d(3,i)
+      ! end if
+
+      sum_delx_sqr = 0.0d0
+      sum_dely_sqr = 0.0d0
+      sum_delz_sqr = 0.0d0
+!
+      sum_delx_dely = 0.0d0
+      sum_dely_delz = 0.0d0
+      sum_delz_delx = 0.0d0
+!
+      sum_delx_delq = 0.0d0
+      sum_dely_delq = 0.0d0
+      sum_delz_delq = 0.0d0
+
+      qm_d(1, :, i) = q_d(:, i)	! q_maximum ..
+      qm_d(2, :, i) = q_d(:, i)	! q_minimum ..
+
+!
+
+!
+      do k = 1, nbhs_d(i)
+!
+         nbh = conn_d(k,i)
+!
+         do r = 1, 5
+            if(q_d(r,nbh) > qm_d(1,r,i)) then
+               qm_d(1,r,i) = q_d(r,nbh)
+            end if
+            if(q_d(r,nbh) < qm_d(2,r,i)) then
+               qm_d(2,r,i) = q_d(r,nbh)
+            end if
+         end do
+!
+         x_k = x_d(1,nbh)
+         y_k = x_d(2,nbh)
+         z_k = x_d(3,nbh)
+!
+         delx = x_k - x_i
+         dely = y_k - y_i
+         delz = z_k - z_i
+!
+         dist = dsqrt(delx*delx + dely*dely + delz*delz)
+         weights = 1.0d0/(dist**power)
+!
+         sum_delx_sqr = sum_delx_sqr + delx*delx*weights
+         sum_dely_sqr = sum_dely_sqr + dely*dely*weights
+         sum_delz_sqr = sum_delz_sqr + delz*delz*weights
+
+!
+         sum_delx_dely = sum_delx_dely + delx*dely*weights
+         sum_dely_delz = sum_dely_delz + dely*delz*weights
+         sum_delz_delx = sum_delz_delx + delz*delx*weights
+!
+         temp = (q_d(:,nbh) - q_d(:,i))
+
+
+         sum_delx_delq = sum_delx_delq + weights*delx*temp
+         sum_dely_delq = sum_dely_delq + weights*dely*temp
+         sum_delz_delq = sum_delz_delq + weights*delz*temp
+!
+      enddo
+!
+      det = sum_delx_sqr*(sum_dely_sqr*sum_delz_sqr - sum_dely_delz*sum_dely_delz) &
+         - sum_delx_dely*(sum_delx_dely*sum_delz_sqr - sum_dely_delz*sum_delz_delx) &
+         + sum_delz_delx*(sum_delx_dely*sum_dely_delz - sum_dely_sqr*sum_delz_delx)
+!
+      one_by_det = 1.0d0/det
+!
+      temp = sum_delx_delq*(sum_dely_sqr*sum_delz_sqr - sum_dely_delz*sum_dely_delz) &
+         - sum_dely_delq*(sum_delx_dely*sum_delz_sqr - sum_delz_delx*sum_dely_delz) &
+         + sum_delz_delq*(sum_delx_dely*sum_dely_delz - sum_delz_delx*sum_dely_sqr)
+!
+      dq_d(1,:,i) = temp*one_by_det
+!
+      temp = sum_delx_sqr*(sum_dely_delq*sum_delz_sqr - sum_dely_delz*sum_delz_delq) &
+         - sum_delx_dely*(sum_delx_delq*sum_delz_sqr - sum_delz_delx*sum_delz_delq) &
+         + sum_delz_delx*(sum_delx_delq*sum_dely_delz - sum_delz_delx*sum_dely_delq)
+!
+      dq_d(2,:,i) = temp*one_by_det
+!
+      temp = sum_delx_sqr*(sum_dely_sqr*sum_delz_delq - sum_dely_delq*sum_dely_delz) &
+         - sum_delx_dely*(sum_delx_dely*sum_delz_delq - sum_delx_delq*sum_dely_delz) &
+         + sum_delz_delx*(sum_delx_dely*sum_dely_delq - sum_delx_delq*sum_dely_sqr)
+!
+      dq_d(3,:,i) = temp*one_by_det
+
+      !if(i == 83780) then
+      !	write(*,*)
+      !	write(*,*)'temp ',temp(1),temp(2),temp(3),temp(4),temp(5)
+      !	write(*,*)'sum_delx_delq',sum_delx_delq(1),sum_delx_delq(2),sum_delx_delq(3),sum_delx_delq(4),sum_delx_delq(5)
+      ! write(*,*)'dq_d(1,:,i)',dq_d(1,1,i),dq_d(1,2,i),dq_d(1,3,i),dq_d(1,4,i),dq_d(1,5,i)
+      ! write(*,*)'dq_d(2,:,i)',dq_d(2,1,i),dq_d(2,2,i),dq_d(2,3,i),dq_d(2,4,i),dq_d(2,5,i)
+      ! write(*,*)'dq_d(3,:,i)',dq_d(3,1,i),dq_d(3,2,i),dq_d(3,3,i),dq_d(3,4,i),dq_d(3,5,i)
+      !end if
+!
+
+
+   end if
+!
+end subroutine
+
+
+
+!	Inner iterations to compute second order accurate q-derivatives ..
+
+attributes(global) subroutine compute_inner_iteration(x_d, nbhs_d, conn_d, q_d, dq_temp_d , dq_d)
+
+implicit none
+
+integer :: i, j, k, r, nbh
+real*8 :: x_i, y_i, z_i, x_k, y_k, z_k
+real*8 :: delx, dely, delz, dist, weights
+real*8 :: sum_delx_sqr, sum_dely_sqr, sum_delz_sqr
+real*8 :: sum_delx_dely, sum_dely_delz, sum_delz_delx
+real*8 :: sum_delx_delq(5), sum_dely_delq(5), sum_delz_delq(5)
+real*8 :: det, one_by_det
+real*8 :: temp(5), qtilde_i(5), qtilde_nbh(5)
+
+real*8 :: temp_d(:, :, :), dq_d(:, :, :), x_d(:, :), q_d(:, :), qm_d(:, :, :)
+integer :: conn_d(:, :), nbhs_d(:)
+real*8  :: dq_temp_d(:,:,:)
+
+!
+
+i = (blockIdx%x - 1)*blockDim%x + threadIdx%x
+
+if (i > max_points_d) return
+!
+x_i = x_d(1, i)
+y_i = x_d(2, i)
+z_i = x_d(3, i)
+!
+sum_delx_sqr = 0.0d0
+sum_dely_sqr = 0.0d0
+sum_delz_sqr = 0.0d0
+!
+sum_delx_dely = 0.0d0
+sum_dely_delz = 0.0d0
+sum_delz_delx = 0.0d0
+!
+sum_delx_delq = 0.0d0
+sum_dely_delq = 0.0d0
+sum_delz_delq = 0.0d0
+!
+do k = 1, nbhs_d(i)
+!
+   nbh = conn_d(k,i)
+!
+   x_k = x_d(1,nbh)
+   y_k = x_d(2,nbh)
+   z_k = x_d(3,nbh)
+!
+   delx = x_k - x_i
+   dely = y_k - y_i
+   delz = z_k - z_i
+!
+   dist = dsqrt(delx*delx + dely*dely + delz*delz)
+   weights = 1.0d0/(dist**power)
+!
+   sum_delx_sqr = sum_delx_sqr + delx*delx*weights
+   sum_dely_sqr = sum_dely_sqr + dely*dely*weights
+   sum_delz_sqr = sum_delz_sqr + delz*delz*weights
+!
+   sum_delx_dely = sum_delx_dely + delx*dely*weights
+   sum_dely_delz = sum_dely_delz + dely*delz*weights
+   sum_delz_delx = sum_delz_delx + delz*delx*weights
+!
+   qtilde_i = q_d(:,i) - 0.5d0*(delx*dq_d(1,:,i) + dely*dq_d(2,:,i) + delz*dq_d(3,:,i))
+   qtilde_nbh = q_d(:,nbh) - 0.5d0*(delx*dq_d(1,:,nbh) + dely*dq_d(2,:,nbh) + delz*dq_d(3,:,nbh))
+   temp = qtilde_nbh - qtilde_i
+!
+   sum_delx_delq = sum_delx_delq + weights*delx*temp
+   sum_dely_delq = sum_dely_delq + weights*dely*temp
+   sum_delz_delq = sum_delz_delq + weights*delz*temp
+!
+enddo
+!
+det = sum_delx_sqr*(sum_dely_sqr*sum_delz_sqr - sum_dely_delz*sum_dely_delz) &
+   - sum_delx_dely*(sum_delx_dely*sum_delz_sqr - sum_dely_delz*sum_delz_delx) &
+   + sum_delz_delx*(sum_delx_dely*sum_dely_delz - sum_dely_sqr*sum_delz_delx)
+!
+one_by_det = 1.0d0/det
+!
+temp = sum_delx_delq*(sum_dely_sqr*sum_delz_sqr - sum_dely_delz*sum_dely_delz) &
+   - sum_dely_delq*(sum_delx_dely*sum_delz_sqr - sum_delz_delx*sum_dely_delz) &
+   + sum_delz_delq*(sum_delx_dely*sum_dely_delz - sum_delz_delx*sum_dely_sqr)
+!
+dq_temp_d(1,:,i) = temp*one_by_det
+!
+temp = sum_delx_sqr*(sum_dely_delq*sum_delz_sqr - sum_dely_delz*sum_delz_delq) &
+   - sum_delx_dely*(sum_delx_delq*sum_delz_sqr - sum_delz_delx*sum_delz_delq) &
+   + sum_delz_delx*(sum_delx_delq*sum_dely_delz - sum_delz_delx*sum_dely_delq)
+!
+dq_temp_d(2,:,i) = temp*one_by_det
+!
+temp = sum_delx_sqr*(sum_dely_sqr*sum_delz_delq - sum_dely_delq*sum_dely_delz) &
+   - sum_delx_dely*(sum_delx_dely*sum_delz_delq - sum_delx_delq*sum_dely_delz) &
+   + sum_delz_delx*(sum_delx_dely*sum_dely_delq - sum_delx_delq*sum_dely_sqr)
+!
+dq_temp_d(3,:,i) = temp*one_by_det
+!
+
+!
+
+!
+!
+end subroutine
+
+
+
+attributes(global) subroutine update_iterations(dq_temp_d, dq_d)
+
+implicit none
+
+integer :: i
+real*8 :: dq_temp_d(:,:, :), dq_d(:, :, :)
+
+i = (blockIdx%x - 1)*blockDim%x + threadIdx%x
+
+if (i > max_points_d) return
+
+ ! dq_d(1, :, i) = temp_d(1:4, i)
+ ! dq_d(2, :, i) = temp_d(5:8, i)
+
+dq_d(1, :, i) = dq_temp_d(1,: , i)
+dq_d(2, :, i) = dq_temp_d(2, :, i)
+dq_d(3, :, i) = dq_temp_d(3, :, i)
+
+end subroutine
+!
+
+
+end module device_q_derivatives_mod

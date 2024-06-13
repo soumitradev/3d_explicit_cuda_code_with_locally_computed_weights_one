@@ -1,0 +1,220 @@
+module device_data_structure_mod
+!
+   use parameter_mod
+   use data_structure_mod
+   use cudafor
+   use cudadevice
+!
+   implicit none
+!
+   type :: points_d
+!
+!		geometry based attributes ..
+!
+      !real*8, device, dimension(:), allocatable :: x,y,z
+      real*8, device, dimension(:, :), allocatable :: x
+      real*8, device, dimension(:,:), allocatable :: tan1, tan2, nor
+      integer, device, dimension(:), allocatable :: status
+      integer, device, dimension(:), allocatable :: nbhs
+      integer, device, dimension(:,:), allocatable :: conn
+      real*8, device, dimension(:,:), allocatable :: weights
+      real*8, device, dimension(:), allocatable :: min_dist
+!
+      integer, device, dimension(:), allocatable :: xpos_nbhs,xneg_nbhs
+      integer, device, dimension(:), allocatable :: ypos_nbhs,yneg_nbhs
+      integer, device, dimension(:), allocatable :: zpos_nbhs,zneg_nbhs
+      integer, device, dimension(:,:), allocatable :: xpos_conn,xneg_conn
+      integer, device, dimension(:,:), allocatable :: ypos_conn,yneg_conn
+      integer, device, dimension(:,:), allocatable :: zpos_conn,zneg_conn
+      real*8, device, dimension(:,:), allocatable :: xpos_weights,xneg_weights
+      real*8, device, dimension(:,:), allocatable :: ypos_weights,yneg_weights
+      real*8, device, dimension(:,:), allocatable :: zpos_weights,zneg_weights
+!
+!		flow field based attributes ..
+!
+      real*8, device, dimension(:,:), allocatable :: prim
+      real*8, device, dimension(:,:), allocatable :: flux_res
+      real*8, device, dimension(:,:), allocatable :: q
+      real*8, device, dimension(:,:,:), allocatable :: qm
+      real*8, device, dimension(:,:,:), allocatable :: dq
+      real*8, device, dimension(:,:,:), allocatable :: dq_temp
+      real*8, device, dimension(:,:,:), allocatable :: temp_wall_pts_flux_res, temp_interior_pts_flux_res, temp_outer_pts_flux_res
+      real*8, device, dimension(:), allocatable :: delt
+
+!		For the implicit code based on LUSGS
+      real*8, device, dimension(:), allocatable :: D_inv
+!
+   end type points_d
+!
+   type(points_d) :: point_d
+!
+!
+   integer, constant :: max_points_d
+   integer ,device  ::  interior_points_d, wall_points_d, outer_points_d
+   integer :: supersonic_inlet_points_d, supersonic_outlet_points_d
+!
+   integer, device, dimension(:), allocatable :: interior_points_index_d
+   integer, device, dimension(:), allocatable :: wall_points_index_d
+   integer, device, dimension(:), allocatable :: outer_points_index_d
+   integer, device, dimension(:), allocatable :: supersonic_outlet_points_index_d
+   integer, device, dimension(:), allocatable :: supersonic_inlet_points_index_d
+
+
+!
+   real*8 res_old_d, res_new_d, max_res_d, residue_d
+   integer max_res_point_d
+
+   integer , constant::  second_order_flag_d, power_d, limiter_flag_d
+   real*8 , constant:: cfl_d,  vl_d, gamma_d, mach_d, u1_inf_d, u2_inf_d, pi_d
+   integer :: istat
+   real*8, device , dimension(:,:) , allocatable::  device_res_sqr
+   real*8, dimension(:,:) , allocatable :: h_res_sqr
+
+
+
+!
+contains
+!
+   subroutine allocate_device_size()
+!
+      implicit none
+!
+      ! allocate(point_d%x(max_points))
+      ! allocate(point_d%y(max_points))
+      ! allocate(point_d%z(max_points))
+      allocate(point_d%x(3,max_points))
+      allocate(point_d%tan1(3,max_points))
+      allocate(point_d%tan2(3,max_points))
+      allocate(point_d%nor(3,max_points))
+      allocate(point_d%status(max_points))
+      allocate(point_d%nbhs(max_points))
+      allocate(point_d%conn(40,max_points))
+      allocate(point_d%weights(40,max_points))
+      allocate(point_d%min_dist(max_points))
+      allocate(point_d%xpos_nbhs(max_points))
+      allocate(point_d%xneg_nbhs(max_points))
+      allocate(point_d%ypos_nbhs(max_points))
+      allocate(point_d%yneg_nbhs(max_points))
+      allocate(point_d%zpos_nbhs(max_points))
+      allocate(point_d%zneg_nbhs(max_points))
+      allocate(point_d%xpos_conn(25,max_points))
+      allocate(point_d%xneg_conn(25,max_points))
+      allocate(point_d%ypos_conn(25,max_points))
+      allocate(point_d%yneg_conn(25,max_points))
+      allocate(point_d%zpos_conn(25,max_points))
+      allocate(point_d%zneg_conn(25,max_points))
+      allocate(point_d%xpos_weights(25,max_points))
+      allocate(point_d%xneg_weights(25,max_points))
+      allocate(point_d%ypos_weights(25,max_points))
+      allocate(point_d%yneg_weights(25,max_points))
+      allocate(point_d%zpos_weights(25,max_points))
+      allocate(point_d%zneg_weights(25,max_points))
+      allocate(point_d%prim(5,max_points))
+      allocate(point_d%flux_res(5,max_points))
+      allocate(point_d%delt(max_points))
+      allocate(point_d%q(5,max_points))
+      allocate(point_d%qm(2,5,max_points))
+      allocate(point_d%dq(3,5,max_points))
+      allocate(point_d%dq_temp(3,5,max_points))
+      allocate(point_d%temp_wall_pts_flux_res(6,5,max_points))
+      allocate(point_d%temp_interior_pts_flux_res(6,5,max_points))
+      allocate(point_d%temp_outer_pts_flux_res(6,5,max_points))
+
+
+      allocate(point_d%D_inv(max_points))
+      allocate(device_res_sqr(2,max_points))
+      allocate(h_res_sqr(2,max_points))
+!
+!
+!
+   end subroutine
+
+
+   subroutine host_to_device()
+
+      implicit none
+
+      ! set constant point information
+
+      max_points_d = max_points
+      cfl_d = cfl
+
+      vl_d = vl_const
+      second_order_flag_d = second_order_flag
+      limiter_flag_d = limiter_flag
+      gamma_d = gamma
+      mach_d = mach
+      pi_d = pi
+      u1_inf_d = u1_inf
+      u2_inf_d = u2_inf
+
+      interior_points_d = interior_points
+      wall_points_d    =  wall_points
+      outer_points_d  = outer_points
+
+      interior_points_index_d = interior_points_index
+      wall_points_index_d =  wall_points_index
+      outer_points_index_d = outer_points_index
+
+
+      !   point_d%x = point%x
+      !   point_d%y = point%y
+      !   point_d%z = point%z
+      point_d%x(1, :) = point%x
+      point_d%x(2, :) = point%y
+      point_d%x(3, :) = point%z
+      point_d%tan1 = point%tan1
+      point_d%tan2 = point%tan2
+      point_d%nor = point%nor
+      point_d%nbhs = point%nbhs
+      point_d%conn = point%conn
+      point_d%weights = point%weights
+      point_d%status = point%status
+      point_d%min_dist = point%min_dist
+      point_d%xpos_nbhs = point%xpos_nbhs
+      point_d%xneg_nbhs = point%xneg_nbhs
+      point_d%ypos_nbhs = point%ypos_nbhs
+      point_d%yneg_nbhs = point%yneg_nbhs
+      point_d%zpos_nbhs = point%zpos_nbhs
+      point_d%zneg_nbhs = point%zneg_nbhs
+      point_d%xpos_conn = point%xpos_conn
+      point_d%xneg_conn = point%xneg_conn
+      point_d%ypos_conn = point%ypos_conn
+      point_d%yneg_conn = point%yneg_conn
+      point_d%zpos_conn = point%zpos_conn
+      point_d%zneg_conn = point%zneg_conn
+      !  point_d%xpos_weights = point%xpos_weights
+      !  point_d%xneg_weights = point%xneg_weights
+      !  point_d%ypos_weights = point%ypos_weights
+      !  point_d%yneg_weights = point%yneg_weights
+      !  point_d%zpos_weights = point%zpos_weights
+      !  point_d%zneg_weights = point%zneg_weights
+      point_d%prim = point%prim
+      point_d%flux_res = point%flux_res
+      point_d%q = point%q
+      point_d%qm = point%qm
+      point_d%dq = point%dq
+      point_d%dq_temp = point%dq_temp
+      point_d%delt = point%delt
+      ! point_d%U = point%U
+      !  point_d%delUp = point%delUp
+      !  point_d%delUn = point%delUn
+      !  point_d%D_inv = point%D_inv
+   end subroutine
+
+
+
+   subroutine device_to_host()
+      implicit none
+      point%flux_res = point_d%flux_res
+      point%q = point_d%q
+      point%qm = point_d%qm
+      point%dq = point_d%dq
+      point%dq_temp = point_d%dq_temp
+      point%delt = point_d%delt
+      point%prim = point_d%prim
+
+
+   end subroutine
+
+end module device_data_structure_mod

@@ -1,0 +1,72 @@
+module device_conserved_vector_Ubar_mod
+   !
+   !
+   use device_data_structure_mod
+   !
+contains
+   !
+   attributes(device)	subroutine device_conserved_vector_Ubar(k, Ubar, tan1_d, tan2_d, nor_d, prim_d )
+   implicit none
+   !
+   real*8	::	u1_inf_rot, u2_inf_rot, u3_inf_rot, rho_e_inf
+   real*8	::	u1, u2, u3, pr, rho, u1_rot, u2_rot, u3_rot, rho_e
+   real*8	::	beta, S3, B3_inf, A3n_inf
+   real*8	::	B3, A3p, temp1, temp2
+   real*8	:: Ubar(5)
+   integer	:: k
+
+   real*8  :: prim_d(:,:)
+   real*8  :: tan1_d(:,:), tan2_d(:,:), nor_d(:,:)
+   real*8 :: tan1(3), tan2(3), nor(3)
+
+   tan1 = tan1_d(:,k)
+   tan2 = tan2_d(:,k)
+   nor = nor_d(:,k)
+
+   u1_inf_rot = u1_inf*tan1_d(1,k) + u2_inf*tan1_d(2,k) + u3_inf*tan1_d(3,k)
+   u2_inf_rot = u1_inf*tan2_d(1,k) + u2_inf*tan2_d(2,k) + u3_inf*tan2_d(3,k)
+   u3_inf_rot = u1_inf*nor_d(1,k) + u2_inf*nor_d(2,k) + u3_inf*nor_d(3,k)
+   rho_e_inf = pr_inf*2.5d0 + 0.5d0*rho_inf*(u1_inf_rot*u1_inf_rot + u2_inf_rot*u2_inf_rot + u3_inf_rot*u3_inf_rot)
+   beta = (0.5d0*rho_inf)/pr_inf
+   S3 = u3_inf_rot*dsqrt(beta)
+   B3_inf = dexp(-S3*S3)/(2.0d0*dsqrt(pi*beta))
+   A3n_inf = 0.5d0*(1.0d0-erf(S3))
+
+   rho = prim_d(1,k)
+   u1 = prim_d(2,k)
+   u2 = prim_d(3,k)
+   u3 = prim_d(4,k)
+   pr = prim_d(5,k)
+
+   u1_rot = u1*tan1_d(1,k) + u2*tan1_d(2,k) + u3*tan1_d(3,k)
+   u2_rot = u1*tan2_d(1,k) + u2*tan2_d(2,k) + u3*tan2_d(3,k)
+   u3_rot = u1*nor_d(1,k) + u2*nor_d(2,k) + u3*nor_d(3,k)
+   !
+   rho_e = pr*2.5d0 + 0.5d0*rho*(u1_rot*u1_rot + u2_rot*u2_rot + u3_rot*u3_rot)
+   !
+   beta = (0.5d0*rho)/pr
+   S3 = u3_rot*dsqrt(beta)
+   B3 = dexp(-S3*S3)/(2.0d0*dsqrt(pi*beta))
+   A3p = 0.5d0*(1.0d0+erf(S3))
+   !
+   Ubar(1) = (rho_inf*A3n_inf) + (rho*A3p)
+   Ubar(2) = (rho_inf*u1_inf_rot*A3n_inf) + (rho*u1_rot*A3p)
+   Ubar(3) = (rho_inf*u2_inf_rot*A3n_inf) + (rho*u2_rot*A3p)
+   !
+   temp1 = rho_inf*(u3_inf_rot*A3n_inf - B3_inf)
+   temp2 = rho*(u3_rot*A3p + B3)
+   Ubar(4) = temp1 + temp2
+   !
+   temp1 = (rho_e_inf*A3n_inf - 0.5d0*rho_inf*u3_inf_rot*B3_inf)
+   temp2 = (rho_e*A3p + 0.5d0*rho*u3_rot*B3)
+   !
+   Ubar(5) = temp1 + temp2
+
+   !
+end subroutine
+ !
+ !
+ !
+end module device_conserved_vector_Ubar_mod
+ !
+

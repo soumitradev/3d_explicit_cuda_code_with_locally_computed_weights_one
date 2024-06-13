@@ -1,0 +1,56 @@
+module device_q_variables_mod
+
+
+   use device_data_structure_mod
+
+contains
+
+   attributes(global) subroutine device_eval_q_variables(prim_d,  q_d)
+
+   implicit none
+
+   integer :: k, r
+   real*8 :: rho, u1, u2, u3, pr, beta
+   real*8 :: two_times_beta
+
+   !device variable
+   real*8  :: prim_d(:,:),q_d(:,:)
+!
+!
+   k = (blockIdx%x - 1)*blockDim%x + threadIdx%x
+
+   !	write(*,*)'max_points_d',max_points_d
+   if (k > max_points_d) return
+!
+   rho = prim_d(1,k)
+   u1 = prim_d(2,k)
+   u2 = prim_d(3,k)
+   u3 = prim_d(4,k)
+   pr = prim_d(5,k)
+!
+   beta = 0.5d0*rho/pr
+!
+   q_d(1,k) = dlog(rho) + (dlog(beta)*2.5d0) - beta*(u1*u1 + u2*u2 + u3*u3)
+!
+   two_times_beta = 2.0d0*beta
+!
+   q_d(2,k) = two_times_beta*u1
+   q_d(3,k) = two_times_beta*u2
+   q_d(4,k) = two_times_beta*u3
+   q_d(5,k) = -two_times_beta
+!
+!
+   if(k == 83779 ) then
+      ! print*,'beta',beta
+      ! print*, 'prim_d',prim_d(1, k), prim_d(2, k) , prim_d(3, k) , prim_d(4, k) , prim_d(5, k)
+      ! print*,'q_d', q_d(1,k), q_d(2,k), q_d(3,k), q_d(4,k), q_d(5,k)
+      ! 	do r = 1,5
+      ! 		print*, 'r, prim_d',r, prim_d(r, k)
+      ! 		print*, 'r,q_d',r,q_d(r, k)
+
+      ! 	end do
+   end if
+end subroutine
+!
+!
+end module device_q_variables_mod

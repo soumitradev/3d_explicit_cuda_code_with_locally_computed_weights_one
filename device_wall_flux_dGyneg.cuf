@@ -1,0 +1,251 @@
+module device_wall_flux_dGyneg_mod
+
+!	First written on 01.01.2021.
+!
+
+   use device_data_structure_mod
+   use device_octant_fluxes_mod
+   use device_q_variables_mod
+   use device_q_derivatives_mod
+   use device_qvariables_to_primitive_variables_mod
+   use device_limiters_mod
+
+
+contains
+
+
+!	This subroutine evaluates the wall flux derivative dGy_neg
+
+
+   !attributes(global)  subroutine device_wall_dGy_neg(status_d, x_d, tan1_d, tan2_d, nor_d, yneg_nbhs_d, yneg_conn_d, dq_d, q_d, qm_d, min_dist_d, flux_res_d, delt_d)
+   attributes(global)  subroutine device_wall_dGy_neg(status_d, x_d, tan1_d, tan2_d, nor_d, yneg_nbhs_d, yneg_conn_d, dq_d, q_d, qm_d, min_dist_d, flux_residual_d)
+!
+!
+   implicit none
+
+   integer :: i, j, k, r
+   real*8 :: prim(5)
+   real*8 :: x_i, y_i, z_i, x_k, y_k, z_k
+   real*8 :: tan1(3), tan2(3), nor(3)
+   real*8 :: G_i(5), G_k(5), G(5)
+   real*8 :: delx, dely, delz, det
+   real*8 :: dels, delt, deln
+!
+   real*8 :: sum_delx_sqr, sum_dely_sqr, sum_delz_sqr
+   real*8 :: sum_delx_dely, sum_dely_delz, sum_delz_delx
+   real*8 :: sum_delx_delf(5), sum_dely_delf(5), sum_delz_delf(5)
+   real*8 :: dist, weights
+   real*8 :: temp(5), qtilde(5), phi_i(5), phi_k(5), phi(5)
+   real*8 :: dels_weights, delt_weights, deln_weights
+!
+
+   ! device variables
+   real*8 ::  x_d(:, :), tan1_d(:,:), tan2_d(:,:), nor_d(:,:)
+   integer :: yneg_nbhs_d(:), yneg_conn_d(:,:),status_d(:)
+   real*8 ::  dq_d(:, :, :), q_d(:, :), qm_d(:, :, :), min_dist_d(:)
+   real*8 :: flux_residual_d(:,:,:)
+   real*8 :: flux_res_d(:, :),  one_by_det, delt_d(:)
+
+!
+   i = threadIdx%x + (blockIdx%x - 1) * blockDim%x
+
+   if (i > max_points_d) return
+   if(status_d(i) .ne. 1 ) return 	!If it's not one, the code immediately exits the current subroutine or function
+
+
+   sum_delx_sqr = 0.0d0
+   sum_dely_sqr = 0.0d0
+   sum_delz_sqr = 0.0d0
+!
+   sum_delx_dely = 0.0d0
+   sum_dely_delz = 0.0d0
+   sum_delz_delx = 0.0d0
+!
+   sum_delx_delf = 0.0d0
+   sum_dely_delf = 0.0d0
+   sum_delz_delf = 0.0d0
+!
+   x_i = x_d(1,i)
+   y_i = x_d(2,i)
+   z_i = x_d(3,i)
+!
+   tan1 = tan1_d(:,i)
+   tan2 = tan2_d(:,i)
+   nor = nor_d(:,i)
+!
+!
+
+!		Finding the limiter function ..
+!
+   do r = 1, 5
+      phi(r) = 1.0d0
+   enddo
+!
+!
+   if(limiter_flag_d .eq. 1) then
+!
+      do j = 1, yneg_nbhs_d(i)
+!
+         k = yneg_conn_d(j,i)
+!
+         x_k = x_d(1,k)
+         y_k = x_d(2,k)
+         z_k = x_d(3,k)
+!
+         delx = x_k - x_i
+         dely = y_k - y_i
+         delz = z_k - z_i
+!
+         temp = delx*dq_d(1,:,k) + dely*dq_d(2,:,k) + delz*dq_d(3,:,k)
+         qtilde = q_d(:,k) - 0.5d0*temp
+
+         !	call venkat_limiter(qtilde, phi_k, i)
+         call device_venkat_limiter(q_d, qm_d, min_dist_d, qtilde, phi_k, i)
+!
+         temp = delx*dq_d(1,:,i) + dely*dq_d(2,:,i) + delz*dq_d(3,:,i)
+         qtilde = q_d(:,i) - 0.5d0*temp
+
+         !	call venkat_limiter(qtilde, phi_i, i)
+         call device_venkat_limiter(q_d, qm_d, min_dist_d, qtilde, phi_i, i)
+!
+!
+         do r = 1, 5
+            if(phi_k(r) .lt. phi(r)) then
+               phi(r) = phi_k(r)
+            endif
+            if(phi_i(r) .lt. phi(r)) then
+               phi(r) = phi_i(r)
+            endif
+         enddo
+      enddo
+   endif
+!
+!		Limiter function evaluation is completed ..
+!
+!
+!
+   do j = 1, yneg_nbhs_d(i)
+!
+      k = yneg_conn_d(j,i)
+!
+      x_k = x_d(1,k)
+      y_k = x_d(2,k)
+      z_k = x_d(3,k)
+!
+      delx = x_k - x_i
+      dely = y_k - y_i
+      delz = z_k - z_i
+!
+      dels = delx*tan1(1) + dely*tan1(2) + delz*tan1(3)
+      delt = delx*tan2(1) + dely*tan2(2) + delz*tan2(3)
+      deln = delx*nor(1) + dely*nor(2) + delz*nor(3)
+!
+      dist = dsqrt(dels*dels + delt*delt + deln*deln)
+      weights = 1.0d0/(dist**power)
+!
+      dels_weights = dels*weights
+      delt_weights = delt*weights
+      deln_weights = deln*weights
+!
+      sum_delx_sqr = sum_delx_sqr + dels*dels_weights
+      sum_dely_sqr = sum_dely_sqr + delt*delt_weights
+      sum_delz_sqr = sum_delz_sqr + deln*deln_weights
+!
+      sum_delx_dely = sum_delx_dely + dels*delt_weights
+      sum_dely_delz = sum_dely_delz + delt*deln_weights
+      sum_delz_delx = sum_delz_delx + deln*dels_weights
+!
+      temp = delx*dq_d(1,:,i) + dely*dq_d(2,:,i) + delz*dq_d(3,:,i)
+      qtilde = q_d(:,i) - 0.5d0*phi*temp
+
+      !call qtilde_to_primitive(qtilde, prim)
+      call device_qtilde_to_primitive(qtilde, prim)
+
+      !call flux_Gwyn(G_i, tan1, tan2, nor, prim)
+      call device_flux_Gwyn(G_i, tan1, tan2, nor, prim)
+!
+      temp = delx*dq_d(1,:,k) + dely*dq_d(2,:,k) + delz*dq_d(3,:,k)
+      qtilde = q_d(:,k) - 0.5d0*phi*temp
+
+      !call qtilde_to_primitive(qtilde, prim)
+      call device_qtilde_to_primitive(qtilde, prim)
+
+      !call flux_Gwyn(G_k, tan1, tan2, nor, prim)
+      call device_flux_Gwyn(G_k, tan1, tan2, nor, prim)
+!
+      temp = G_k - G_i
+!
+      sum_delx_delf = sum_delx_delf + temp*dels_weights
+      sum_dely_delf = sum_dely_delf + temp*delt_weights
+      sum_delz_delf = sum_delz_delf + temp*deln_weights
+!
+   enddo
+!
+   det = sum_delx_sqr*(sum_dely_sqr*sum_delz_sqr - sum_dely_delz*sum_dely_delz) &
+      - sum_delx_dely*(sum_delx_dely*sum_delz_sqr - sum_dely_delz*sum_delz_delx) &
+      + sum_delz_delx*(sum_delx_dely*sum_dely_delz - sum_dely_sqr*sum_delz_delx)
+
+   one_by_det = 1.d0/det
+!
+   temp = sum_delx_sqr*(sum_dely_delf*sum_delz_sqr - sum_dely_delz*sum_delz_delf) &
+      - sum_delx_dely*(sum_delx_delf*sum_delz_sqr - sum_delz_delx*sum_delz_delf) &
+      + sum_delz_delx*(sum_delx_delf*sum_dely_delz - sum_delz_delx*sum_dely_delf)
+!
+!
+   G = temp/det
+
+   flux_residual_d(4,:,i) = G
+
+   ! flux_res_d(1, i) =  flux_res_d(1, i) + 2.0d0*delt_d(i)*((sum_delx_sqr*(sum_dely_delf(1)*sum_delz_sqr - sum_dely_delz*sum_delz_delf(1)) &
+   !  					- sum_delx_dely*(sum_delx_delf(1)*sum_delz_sqr - sum_delz_delx*sum_delz_delf(1)) &
+   !  					+ sum_delz_delx*(sum_delx_delf(1)*sum_dely_delz - sum_delz_delx*sum_dely_delf(1)))*one_by_det)
+
+   ! flux_res_d(2, i) = 	flux_res_d(2, i)  + 2.0d0*delt_d(i)*((sum_delx_sqr*(sum_dely_delf(2)*sum_delz_sqr - sum_dely_delz*sum_delz_delf(2)) &
+   ! 					- sum_delx_dely*(sum_delx_delf(2)*sum_delz_sqr - sum_delz_delx*sum_delz_delf(2)) &
+   ! 					+ sum_delz_delx*(sum_delx_delf(2)*sum_dely_delz - sum_delz_delx*sum_dely_delf(2)))*one_by_det)
+
+   ! flux_res_d(3, i) = flux_res_d(3, i) + 2.0d0*delt_d(i)*((sum_delx_sqr*(sum_dely_delf(3)*sum_delz_sqr - sum_dely_delz*sum_delz_delf(3)) &
+   ! 				  - sum_delx_dely*(sum_delx_delf(3)*sum_delz_sqr - sum_delz_delx*sum_delz_delf(3)) &
+   ! 				  + sum_delz_delx*(sum_delx_delf(3)*sum_dely_delz - sum_delz_delx*sum_dely_delf(3)))*one_by_det)
+
+
+   ! flux_res_d(4, i) = 	flux_res_d(4, i) + 2.0d0*delt_d(i)*((sum_delx_sqr*(sum_dely_delf(4)*sum_delz_sqr - sum_dely_delz*sum_delz_delf(4)) &
+   ! 					- sum_delx_dely*(sum_delx_delf(4)*sum_delz_sqr - sum_delz_delx*sum_delz_delf(4)) &
+   ! 					+ sum_delz_delx*(sum_delx_delf(4)*sum_dely_delz - sum_delz_delx*sum_dely_delf(4)))*one_by_det)
+
+   ! flux_res_d(5, i) = flux_res_d(5, i) + 2.0d0*delt_d(i)*((sum_delx_sqr*(sum_dely_delf(5)*sum_delz_sqr - sum_dely_delz*sum_delz_delf(5)) &
+   ! 					- sum_delx_dely*(sum_delx_delf(5)*sum_delz_sqr - sum_delz_delx*sum_delz_delf(5)) &
+   ! 					+ sum_delz_delx*(sum_delx_delf(5)*sum_dely_delz - sum_delz_delx*sum_dely_delf(5)))*one_by_det)
+
+
+   ! flux_res_d(1, i) =  ((sum_delx_sqr*(sum_dely_delf(1)*sum_delz_sqr - sum_dely_delz*sum_delz_delf(1)) &
+   !  					- sum_delx_dely*(sum_delx_delf(1)*sum_delz_sqr - sum_delz_delx*sum_delz_delf(1)) &
+   !  					+ sum_delz_delx*(sum_delx_delf(1)*sum_dely_delz - sum_delz_delx*sum_dely_delf(1)))*one_by_det)
+
+   ! flux_res_d(2, i) = ((sum_delx_sqr*(sum_dely_delf(2)*sum_delz_sqr - sum_dely_delz*sum_delz_delf(2)) &
+   ! 					- sum_delx_dely*(sum_delx_delf(2)*sum_delz_sqr - sum_delz_delx*sum_delz_delf(2)) &
+   ! 					+ sum_delz_delx*(sum_delx_delf(2)*sum_dely_delz - sum_delz_delx*sum_dely_delf(2)))*one_by_det)
+
+   ! flux_res_d(3, i) =  ((sum_delx_sqr*(sum_dely_delf(3)*sum_delz_sqr - sum_dely_delz*sum_delz_delf(3)) &
+   ! 				  - sum_delx_dely*(sum_delx_delf(3)*sum_delz_sqr - sum_delz_delx*sum_delz_delf(3)) &
+   ! 				  + sum_delz_delx*(sum_delx_delf(3)*sum_dely_delz - sum_delz_delx*sum_dely_delf(3)))*one_by_det)
+
+
+   ! flux_res_d(4, i) = 	((sum_delx_sqr*(sum_dely_delf(4)*sum_delz_sqr - sum_dely_delz*sum_delz_delf(4)) &
+   ! 					- sum_delx_dely*(sum_delx_delf(4)*sum_delz_sqr - sum_delz_delx*sum_delz_delf(4)) &
+   ! 					+ sum_delz_delx*(sum_delx_delf(4)*sum_dely_delz - sum_delz_delx*sum_dely_delf(4)))*one_by_det)
+
+   ! flux_res_d(5, i) =  ((sum_delx_sqr*(sum_dely_delf(5)*sum_delz_sqr - sum_dely_delz*sum_delz_delf(5)) &
+   ! 					- sum_delx_dely*(sum_delx_delf(5)*sum_delz_sqr - sum_delz_delx*sum_delz_delf(5)) &
+   ! 					+ sum_delz_delx*(sum_delx_delf(5)*sum_dely_delz - sum_delz_delx*sum_dely_delf(5)))*one_by_det)
+
+   ! if(i== 4) then
+   ! 		write(*,*)' wall Gyn',flux_res_d(1, i),flux_res_d(2, i),flux_res_d(3, i),flux_res_d(4, i),flux_res_d(5, i)
+   ! endif
+!
+!
+
+end subroutine
+!
+!
+end module device_wall_flux_dGyneg_mod

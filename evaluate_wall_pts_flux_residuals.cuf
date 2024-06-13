@@ -1,0 +1,50 @@
+module evaluate_wall_pts_flux_residuals_mod
+
+
+
+   use device_data_structure_mod
+   use device_wall_flux_dGxpos_mod
+   use device_wall_flux_dGxneg_mod
+   use device_wall_flux_dGypos_mod
+   use device_wall_flux_dGyneg_mod
+   use device_wall_flux_dGzneg_mod
+
+contains
+
+   attributes(global) subroutine evaluate_wall_pts_flux_residuals(status_d, flux_res_d, delt_d, flux_residual_d)
+
+   implicit none
+
+
+   integer :: i, status_d(:)
+   real*8 :: flux_res_d(:,:), delt_d(:)
+   real*8 :: flux_residual_d(:,:,:)
+
+
+
+   i = threadIdx%x + (blockIdx%x - 1) * blockDim%x
+
+   if (i > max_points_d) return
+
+   ! if(status_d(i) == 1) then
+   if(status_d(i) .ne. 1 ) return 	!If it's not one, the code immediately exits the current subroutine or function
+
+   flux_res_d(:,i) = 2.0d0*delt_d(i)*(flux_residual_d(1,:,i) + flux_residual_d(2,:,i) + flux_residual_d(3,:,i) + flux_residual_d(4,:,i) + flux_residual_d(5,:,i))
+
+
+   !   end if
+
+   ! if(i==1) then
+   !     !write(*, *)'delt_d(i)', delt_d(i)
+   ! !write(*,*)'flux_residual_d',i,flux_residual_d(1,1,i), flux_residual_d(1,2,i),flux_residual_d(1,3,i),flux_residual_d(1,4,i),flux_residual_d(1,5,i)
+   !     write(*, *) "flux residual = ",i,  flux_res_d(1,i),  flux_res_d(2,i),&
+   !      &  flux_res_d(3,i),  flux_res_d(4,i),  flux_res_d(5,i)
+
+
+   ! end if
+
+end subroutine
+
+end module
+
+

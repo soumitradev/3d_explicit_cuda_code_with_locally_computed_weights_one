@@ -1,0 +1,63 @@
+module device_timestep_delt_mod
+!
+!
+   use device_data_structure_mod
+!
+contains
+
+   attributes(global) subroutine device_timestep_delt(nbhs_d, conn_d, prim_d, x_d, delt_d)
+!
+!
+   implicit none
+!
+   integer :: i, k, r
+   real*8 :: rho, u1, u2, u3, pr
+   real*8 :: delx, dely, delz, dist
+   real*8 :: min_delt
+   real*8 :: mod_u, delt
+!
+!
+   !device variable
+   integer :: conn_d(:, :), nbhs_d(:)
+   real*8  :: prim_d(:,:)
+   real*8 :: x_d(:, :),  delt_d(:)
+
+   i = (blockIdx%x - 1)*blockDim%x + threadIdx%x
+   if (i > max_points_d) return
+!
+   min_delt = 1.0d0
+!
+   do r = 1, nbhs_d(i)
+!
+      k = conn_d(r,i)
+!
+      rho = prim_d(1,k)
+      u1 = prim_d(2,k)
+      u2 = prim_d(3,k)
+      u3 = prim_d(4,k)
+      pr = prim_d(5,k)
+!
+
+      delx = x_d(1,k) - x_d(1,i)
+      dely = x_d(2,k) - x_d(2,i)
+      delz = x_d(3,k) - x_d(3,i)
+!
+      dist = dsqrt(delx*delx + dely*dely + delz*delz)
+!
+      mod_u = dsqrt(u1*u1 + u2*u2 + u3*u3)
+      delt = cfl*dist/(mod_u + 3.0d0*dsqrt(pr/rho))
+!
+      if(delt < min_delt) then
+         min_delt = delt
+      endif
+!
+   enddo
+!
+   delt_d(i) = min_delt
+!
+
+!
+end subroutine
+!
+!
+end module device_timestep_delt_mod

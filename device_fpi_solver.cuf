@@ -1,0 +1,155 @@
+!
+module device_fpi_solver_mod
+!
+!	First written on 06.02.2020
+!
+!
+   use data_structure_mod
+   use device_data_structure_mod
+   use cudafor
+   use ieee_arithmetic
+   use device_q_variables_mod
+   use device_q_derivatives_mod
+   use device_timestep_delt_mod
+
+   use device_interior_flux_dGxpos_mod
+   use device_interior_flux_dGxneg_mod
+   use device_interior_flux_dGypos_mod
+   use device_interior_flux_dGyneg_mod
+   use device_interior_flux_dGzpos_mod
+   use device_interior_flux_dGzneg_mod
+   use evaluate_interior_pts_flux_residuals_mod
+!
+   use device_wall_flux_dGxpos_mod
+   use device_wall_flux_dGxneg_mod
+   use device_wall_flux_dGypos_mod
+   use device_wall_flux_dGyneg_mod
+   use device_wall_flux_dGzneg_mod
+   use evaluate_wall_pts_flux_residuals_mod
+
+   use device_outer_flux_dGxpos_mod
+   use device_outer_flux_dGxneg_mod
+   use device_outer_flux_dGypos_mod
+   use device_outer_flux_dGyneg_mod
+   use device_outer_flux_dGzpos_mod
+   use evaluate_outer_bdry_pts_flux_residuals_mod
+
+   use device_state_update_mod
+
+
+
+
+   real*8 :: sum_res_sqr
+   real*8, allocatable :: sum_res_result(:)
+
+
+!
+contains
+!
+!
+   subroutine fpi_solver()
+!
+      implicit none
+!
+      integer ::  t, i,j
+      type(dim3) :: grid, tBlock
+      real*8 :: start, finish, time
+
+
+      write (*, *) "Allocating Memory on the GPU"
+      call allocate_device_size()
+      call cpu_time(start)
+!
+      write (*, *) "Transferring data from host (CPU) to device (GPU)"
+      call host_to_device()
+!
+      tBlock = dim3(256, 1, 1)
+
+      grid = dim3(ceiling(real(max_points)/tBlock%x), 1, 1)
+!
+
+      allocate (sum_res_result(max_points))
+
+      write (*, *) '%%%%%%%%%%%%%%%-GPU size info-%%%%%%%%%%%%%'
+      write (*, *) 'grid dimension:', grid
+      write (*, *) 'thread block dimension:', tBlock
+
+      write (*, *)
+      write (*, *) '%%%%%%%%%%%%%-Iterations begin-%%%%%%%%%%%%'
+      write (*, *)
+
+      OPEN (UNIT=301, FILE="residue", FORM="FORMATTED", STATUS="REPLACE", ACTION="WRITE")
+!
+      do t = 1, max_iters
+
+         call device_eval_q_variables<<< grid,tBlock >>> (point_d%prim, point_d%q)
+
+         call device_eval_q_derivatives<<< grid,tBlock >>>(point_d%qm, point_d%q,point_d%nbhs, point_d%conn, point_d%dq, point_d%x)
+
+         do i = 1, inner_iterations
+            call compute_inner_iteration<<< grid,tBlock >>>(point_d%x, point_d%nbhs, point_d%conn, point_d%q,point_d%dq_temp, point_d%dq)
+            call update_iterations<<< grid,tBlock >>>(point_d%dq_temp, point_d%dq)
+         end do
+
+         call device_timestep_delt<<< grid,tBlock >>>(point_d%nbhs, point_d%conn, point_d%prim, point_d%x, point_d%delt)
+
+         call device_wall_dGx_pos<<< grid, tBlock >>>(point_d%status, point_d%x, point_d%tan1, point_d%tan2, point_d%nor, point_d%xpos_nbhs,  point_d%xpos_conn, point_d%dq, point_d%q, point_d%qm, point_d%min_dist,point_d%temp_wall_pts_flux_res)
+         call device_wall_dGx_neg<<< grid, tBlock >>>(point_d%status, point_d%x, point_d%tan1, point_d%tan2, point_d%nor, point_d%xneg_nbhs, point_d%xneg_conn, point_d%dq, point_d%q, point_d%qm, point_d%min_dist, point_d%temp_wall_pts_flux_res)
+         call device_wall_dGy_pos<<< grid, tBlock >>>(point_d%status, point_d%x, point_d%tan1, point_d%tan2, point_d%nor, point_d%ypos_nbhs, point_d%ypos_conn, point_d%dq, point_d%q, point_d%qm, point_d%min_dist, point_d%temp_wall_pts_flux_res)
+         call device_wall_dGy_neg<<< grid, tBlock >>>(point_d%status, point_d%x, point_d%tan1, point_d%tan2, point_d%nor, point_d%yneg_nbhs, point_d%yneg_conn, point_d%dq, point_d%q, point_d%qm, point_d%min_dist, point_d%temp_wall_pts_flux_res)
+         call device_wall_dGz_neg<<< grid, tBlock >>>(point_d%status, point_d%x, point_d%tan1, point_d%tan2, point_d%nor, point_d%nbhs, point_d%conn, point_d%dq, point_d%q, point_d%qm, point_d%min_dist, point_d%temp_wall_pts_flux_res)
+         call  evaluate_wall_pts_flux_residuals<<< grid, tBlock >>>(point_d%status, point_d%flux_res, point_d%delt, point_d%temp_wall_pts_flux_res)
+
+         call device_outer_dGx_pos<<< grid, tBlock >>>(point_d%status, point_d%x, point_d%tan1, point_d%tan2, point_d%nor, point_d%xpos_nbhs, point_d%xpos_conn, point_d%dq, point_d%q, point_d%qm, point_d%min_dist, point_d%temp_outer_pts_flux_res )
+         call device_outer_dGx_neg<<< grid, tBlock >>>(point_d%status, point_d%x, point_d%tan1, point_d%tan2, point_d%nor, point_d%xneg_nbhs, point_d%xneg_conn, point_d%dq, point_d%q, point_d%qm, point_d%min_dist,point_d%temp_outer_pts_flux_res )
+         call device_outer_dGy_pos<<< grid, tBlock >>>(point_d%status, point_d%x, point_d%tan1, point_d%tan2, point_d%nor, point_d%ypos_nbhs, point_d%ypos_conn, point_d%dq, point_d%q, point_d%qm, point_d%min_dist, point_d%temp_outer_pts_flux_res  )
+         call device_outer_dGy_neg<<< grid, tBlock >>>(point_d%status, point_d%x, point_d%tan1, point_d%tan2, point_d%nor, point_d%yneg_nbhs, point_d%yneg_conn,  point_d%dq, point_d%q, point_d%qm, point_d%min_dist, point_d%temp_outer_pts_flux_res)
+         call device_outer_dGz_pos<<< grid, tBlock >>>(point_d%status, point_d%x, point_d%tan1, point_d%tan2, point_d%nor, point_d%nbhs, point_d%conn,  point_d%dq,  point_d%q, point_d%qm, point_d%min_dist, point_d%temp_outer_pts_flux_res )
+         call evaluate_outer_bdry_pts_flux_residuals<<< grid, tBlock >>>(point_d%status, point_d%flux_res, point_d%delt, point_d%temp_outer_pts_flux_res)
+
+         call device_interior_dGx_pos<<< grid, tBlock >>>(point_d%status, point_d%x, point_d%tan1, point_d%tan2, point_d%nor, point_d%xpos_nbhs, point_d%xpos_conn, point_d%dq, point_d%q, point_d%qm, point_d%min_dist, point_d%temp_interior_pts_flux_res)
+         call device_interior_dGx_neg<<< grid, tBlock >>>(point_d%status, point_d%x, point_d%tan1, point_d%tan2, point_d%nor, point_d%xneg_nbhs, point_d%xneg_conn, point_d%dq, point_d%q, point_d%qm, point_d%min_dist, point_d%temp_interior_pts_flux_res)
+         call device_interior_dGy_pos<<< grid, tBlock >>>(point_d%status, point_d%x, point_d%tan1, point_d%tan2, point_d%nor, point_d%ypos_nbhs, point_d%ypos_conn, point_d%dq, point_d%q, point_d%qm, point_d%min_dist, point_d%temp_interior_pts_flux_res)
+         call device_interior_dGy_neg<<< grid, tBlock >>>(point_d%status, point_d%x,point_d%tan1, point_d%tan2, point_d%nor, point_d%yneg_nbhs, point_d%yneg_conn, point_d%dq, point_d%q, point_d%qm, point_d%min_dist, point_d%temp_interior_pts_flux_res)
+         call device_interior_dGz_pos<<< grid, tBlock >>>(point_d%status, point_d%x, point_d%tan1, point_d%tan2, point_d%nor, point_d%zpos_nbhs, point_d%zpos_conn,  point_d%dq,  point_d%q, point_d%qm, point_d%min_dist, point_d%temp_interior_pts_flux_res )
+         call device_interior_dGz_neg<<< grid, tBlock >>>(point_d%status, point_d%x, point_d%tan1, point_d%tan2, point_d%nor, point_d%zneg_nbhs, point_d%zneg_conn, point_d%dq, point_d%q, point_d%qm, point_d%min_dist, point_d%temp_interior_pts_flux_res)
+         call evaluate_interior_pts_flux_residuals<<< grid, tBlock >>>(point_d%status, point_d%flux_res, point_d%delt, point_d%temp_interior_pts_flux_res)
+
+
+         device_res_sqr=0.0d0
+         sum_res_sqr = 0.0d0
+
+         call device_state_update<<< grid, tBlock >>> (point_d%prim, point_d%tan1, point_d%tan2, point_d%nor,point_d%flux_res,  device_res_sqr)
+
+         h_res_sqr = device_res_sqr
+
+         sum_res_sqr=sum(h_res_sqr)
+
+         res_new=dsqrt(sum_res_sqr)/max_points
+
+         if(t .le. 2) then
+            res_old = res_new
+            residue = 0.0d0
+         else
+            residue = dlog10(res_new/res_old)
+         endif
+
+         print*, t, residue
+         write (301, *) t, residue
+!
+         if (ieee_is_nan(residue)) exit
+
+
+      end do
+
+      call device_to_host()
+      call cpu_time(finish)
+      time = finish - start
+
+      write(*,*) "Total Time on the GPU: ", time
+
+!
+   end subroutine
+!
+!
+end module device_fpi_solver_mod

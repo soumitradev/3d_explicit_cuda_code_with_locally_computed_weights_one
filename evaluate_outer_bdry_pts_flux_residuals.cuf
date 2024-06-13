@@ -1,0 +1,33 @@
+module evaluate_outer_bdry_pts_flux_residuals_mod
+
+
+   use device_data_structure_mod
+   use device_outer_flux_dGxpos_mod
+   use device_outer_flux_dGxneg_mod
+   use device_outer_flux_dGypos_mod
+   use device_outer_flux_dGyneg_mod
+   use device_outer_flux_dGzpos_mod
+
+contains
+
+   attributes(global) subroutine evaluate_outer_bdry_pts_flux_residuals(status_d, flux_res_d, delt_d, flux_residual_d)
+
+   implicit none
+
+
+   integer :: i, status_d(:)
+   real*8 :: flux_res_d(:,:), delt_d(:)
+   real*8 :: flux_residual_d(:,:,:)
+
+   i = threadIdx%x + (blockIdx%x - 1) * blockDim%x
+
+   if (i > max_points_d) return
+   if(status_d(i) .ne. 2 ) return 	!If it's not two, the code immediately exits the current subroutine or function
+
+   flux_res_d(:,i) = delt_d(i)*(flux_residual_d(1,:,i) + flux_residual_d(2,:,i) + flux_residual_d(3,:,i) + flux_residual_d(4,:,i) + flux_residual_d(5,:,i))
+
+end subroutine
+
+end module
+
+

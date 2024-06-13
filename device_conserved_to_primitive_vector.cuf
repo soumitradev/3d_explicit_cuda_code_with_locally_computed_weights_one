@@ -1,0 +1,50 @@
+module device_conserved_to_primitive_vector_mod
+!
+!
+   use device_data_structure_mod
+!
+!
+contains
+!
+!
+!
+   attributes(device) subroutine device_conserved_to_primitive(k, U, prim_d, tan1_d, tan2_d, nor_d )
+!
+   implicit none
+!
+   real*8 :: U(5), temp
+   real*8 :: U2_rot, U3_rot, U4_rot
+   integer :: k
+   real*8  :: prim_d(:,:)
+   real*8  ::   tan1_d(:,:), tan2_d(:,:), nor_d(:,:)
+   real*8 :: tan1(3), tan2(3), nor(3)
+
+   tan1 = tan1_d(:,k)
+   tan2 = tan2_d(:,k)
+   nor = nor_d(:,k)
+!
+   prim_d(1,k) = U(1)
+   temp = 1.0d0/U(1)
+!
+   U2_rot = U(2)
+   U3_rot = U(3)
+   U4_rot = U(4)
+!
+   U(2) = tan1_d(1,k)*U2_rot + tan2_d(1,k)*U3_rot + nor_d(1,k)*U4_rot
+   U(3) = tan1_d(2,k)*U2_rot + tan2_d(2,k)*U3_rot + nor_d(2,k)*U4_rot
+   U(4) = tan1_d(3,k)*U2_rot + tan2_d(3,k)*U3_rot + nor_d(3,k)*U4_rot
+!
+!
+   prim_d(2,k) = temp*U(2)
+   prim_d(3,k) = temp*U(3)
+   prim_d(4,k) = temp*U(4)
+!
+   temp = 	prim_d(2,k)*prim_d(2,k) + prim_d(3,k)*prim_d(3,k) + prim_d(4,k)*prim_d(4,k)
+
+   prim_d(5,k) = 0.4d0*(U(5) - 0.5d0*prim_d(1,k)*temp)
+!
+end subroutine
+!
+!
+end module device_conserved_to_primitive_vector_mod
+!

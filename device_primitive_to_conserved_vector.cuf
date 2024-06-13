@@ -1,0 +1,50 @@
+module device_primitive_to_conserved_vector_mod
+!
+!
+   use device_data_structure_mod
+!
+!
+contains
+!
+!
+! 	subroutine device_primitive_to_conserved(k, U)
+   attributes(device)	subroutine device_primitive_to_conserved(k, U, prim_d, tan1_d, tan2_d, nor_d)
+
+!
+   implicit none
+!
+   real*8 :: U(5)
+   real*8 :: temp1, temp2, temp3
+   integer :: k
+   real*8  :: prim_d(:,:)
+   real*8  ::   tan1_d(:,:), tan2_d(:,:), nor_d(:,:)
+   real*8 :: tan1(3), tan2(3), nor(3)
+
+   tan1 = tan1_d(:,k)
+   tan2 = tan2_d(:,k)
+   nor = nor_d(:,k)
+
+   U(1) = prim_d(1,k)
+   temp1 = prim_d(1,k)*prim_d(2,k)
+   temp2 = prim_d(1,k)*prim_d(3,k)
+   temp3 = prim_d(1,k)*prim_d(4,k)
+
+!
+!			The momentum components in the rotational frame ..
+!
+   U(2) = temp1*tan1_d(1,k) + temp2*tan1_d(2,k) + temp3*tan1_d(3,k)
+   U(3) = temp1*tan2_d(1,k) + temp2*tan2_d(2,k) + temp3*tan2_d(3,k)
+   U(4) = temp1*nor_d(1,k) + temp2*nor_d(2,k) + temp3*nor_d(3,k)
+!
+   temp1 = prim_d(2,k)*prim_d(2,k) + prim_d(3,k)*prim_d(3,k) + prim_d(4,k)*prim_d(4,k)
+   U(5) = 2.5d0*prim_d(5,k) + 0.5d0*U(1)*temp1
+
+   ! if(k==1000) then ! matching with serial code
+   ! 	write(*,*)'U',U(1),U(2),U(3),U(4),U(5)
+   ! end if
+!
+end subroutine
+!
+!
+end module device_primitive_to_conserved_vector_mod
+!
