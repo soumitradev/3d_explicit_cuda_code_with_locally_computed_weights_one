@@ -98,8 +98,8 @@ contains
    sum_dely_delq = 0.0d0
    sum_delz_delq = 0.0d0
 
-   qm_d(1, :, i) = q_d(:, i)	! q_maximum ..
-   qm_d(2, :, i) = q_d(:, i)	! q_minimum ..
+   qm_d(:, 1, i) = q_d(:, i)	! q_maximum ..
+   qm_d(:, 2, i) = q_d(:, i)	! q_minimum ..
 
 !
 
@@ -109,11 +109,11 @@ contains
       nbh = conn_d(k,i)
 !
       do r = 1, 5
-         if(q_d(r,nbh) > qm_d(1,r,i)) then
-            qm_d(1,r,i) = q_d(r,nbh)
+         if(q_d(r,nbh) > qm_d(r,1,i)) then
+            qm_d(r,1,i) = q_d(r,nbh)
          end if
-         if(q_d(r,nbh) < qm_d(2,r,i)) then
-            qm_d(2,r,i) = q_d(r,nbh)
+         if(q_d(r,nbh) < qm_d(r,2,i)) then
+            qm_d(r,2,i) = q_d(r,nbh)
          end if
       end do
 !

@@ -102,7 +102,7 @@ contains
       allocate(point%flux_res(5,max_points))
       allocate(point%delt(max_points))
       allocate(point%q(5,max_points))
-      allocate(point%qm(2,5,max_points))
+      allocate(point%qm(5,2,max_points))
       allocate(point%dq(3,5,max_points))
       allocate(point%dq_temp(3,5,max_points))
 

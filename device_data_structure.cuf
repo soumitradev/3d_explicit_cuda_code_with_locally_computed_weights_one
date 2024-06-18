@@ -113,7 +113,7 @@ contains
       allocate(point_d%flux_res(5,max_points))
       allocate(point_d%delt(max_points))
       allocate(point_d%q(5,max_points))
-      allocate(point_d%qm(2,5,max_points))
+      allocate(point_d%qm(5,2,max_points))
       allocate(point_d%dq(3,5,max_points))
       allocate(point_d%dq_temp(3,5,max_points))
       allocate(point_d%temp_wall_pts_flux_res(6,5,max_points))
