@@ -24,11 +24,10 @@ contains
    ! real*8:: dq_d(:, :, :), qm_d(:, :, :)
    ! real*8 :: x_d(:, :), q_d(:, :)
    ! integer :: conn_d(:, :), nbhs_d(:)
-   real*8, intent(out):: dq_d(:, :, :), qm_d(:, :, :)
-   real*8, intent(in) :: x_d(:, :), q_d(:, :)
-   integer, intent(in) :: conn_d(:, :), nbhs_d(:)
+   real*8, intent(out):: dq_d(3, 5, max_points_d), qm_d(5, 2, max_points_d)
+   real*8, intent(in) :: x_d(3, max_points_d), q_d(5, max_points_d)
+   integer, intent(in) :: conn_d(40, max_points_d), nbhs_d(max_points_d)
 !
-   real*8, dimension(:,:,:) :: dq_temp_d
    ! dq_d = point_d%dq
    ! qm_d = point_d%qm
    ! q_d = point_d%q
@@ -100,7 +99,6 @@ contains
 
    qm_d(:, 1, i) = q_d(:, i)	! q_maximum ..
    qm_d(:, 2, i) = q_d(:, i)	! q_minimum ..
-
 !
 
 !
@@ -137,7 +135,7 @@ contains
       sum_dely_delz = sum_dely_delz + dely*delz*weights
       sum_delz_delx = sum_delz_delx + delz*delx*weights
 !
-      temp = (q_d(:,nbh) - q_d(:,i))
+      temp = q_d(:,nbh) - q_d(:,i)
 
 
       sum_delx_delq = sum_delx_delq + weights*delx*temp
@@ -156,19 +154,20 @@ contains
       - sum_dely_delq*(sum_delx_dely*sum_delz_sqr - sum_delz_delx*sum_dely_delz) &
       + sum_delz_delq*(sum_delx_dely*sum_dely_delz - sum_delz_delx*sum_dely_sqr)
 !
-   dq_d(1,:,i) = temp*one_by_det
+
+   dq_d(:,1,i) = temp*one_by_det
 !
    temp = sum_delx_sqr*(sum_dely_delq*sum_delz_sqr - sum_dely_delz*sum_delz_delq) &
       - sum_delx_dely*(sum_delx_delq*sum_delz_sqr - sum_delz_delx*sum_delz_delq) &
       + sum_delz_delx*(sum_delx_delq*sum_dely_delz - sum_delz_delx*sum_dely_delq)
 !
-   dq_d(2,:,i) = temp*one_by_det
+   dq_d(:,2,i) = temp*one_by_det
 !
    temp = sum_delx_sqr*(sum_dely_sqr*sum_delz_delq - sum_dely_delq*sum_dely_delz) &
       - sum_delx_dely*(sum_delx_dely*sum_delz_delq - sum_delx_delq*sum_dely_delz) &
       + sum_delz_delx*(sum_delx_dely*sum_dely_delq - sum_delx_delq*sum_dely_sqr)
 !
-   dq_d(3,:,i) = temp*one_by_det
+   dq_d(:,3,i) = temp*one_by_det
 
    !if(i == 83780) then
    !	write(*,*)
