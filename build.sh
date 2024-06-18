@@ -4,7 +4,7 @@
 rm -r CMakeCache.txt
 rm -r CMakeFiles
 rm -r cmake_install
-rm cuda.f90
+rm cuda.F90
 rm cuda.F90.in
 
 # Load the nvhpc module using spack
