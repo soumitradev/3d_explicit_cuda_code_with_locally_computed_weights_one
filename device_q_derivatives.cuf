@@ -11,7 +11,7 @@ contains
    implicit none
 !
 !
-   integer :: i, k, r, nbh
+   integer :: i, p, k, r, nbh
    real*8 :: x_i, y_i, z_i, x_k, y_k, z_k
    real*8 :: delx, dely, delz, dist, weights
    real*8 :: sum_delx_sqr, sum_dely_sqr, sum_delz_sqr
@@ -24,11 +24,10 @@ contains
    ! real*8:: dq_d(:, :, :), qm_d(:, :, :)
    ! real*8 :: x_d(:, :), q_d(:, :)
    ! integer :: conn_d(:, :), nbhs_d(:)
-   real*8, intent(out):: dq_d(:, :, :), qm_d(:, :, :)
-   real*8, intent(in) :: x_d(:, :), q_d(:, :)
-   integer, intent(in) :: conn_d(:, :), nbhs_d(:)
+   real*8, intent(out):: dq_d(3, 5, max_points_d), qm_d(5, 2, max_points_d)
+   real*8, intent(in) :: x_d(3, max_points_d), q_d(5, max_points_d)
+   integer, intent(in) :: conn_d(40, max_points_d), nbhs_d(max_points_d)
 !
-   real*8, dimension(:,:,:) :: dq_temp_d
    ! dq_d = point_d%dq
    ! qm_d = point_d%qm
    ! q_d = point_d%q
@@ -100,7 +99,6 @@ contains
 
    qm_d(:, 1, i) = q_d(:, i)	! q_maximum ..
    qm_d(:, 2, i) = q_d(:, i)	! q_minimum ..
-
 !
 
 !
@@ -137,7 +135,9 @@ contains
       sum_dely_delz = sum_dely_delz + dely*delz*weights
       sum_delz_delx = sum_delz_delx + delz*delx*weights
 !
-      temp = (q_d(:,nbh) - q_d(:,i))
+      do p = 1, 5
+         temp(p) = (q_d(p,nbh) - q_d(p,i))
+      end do
 
 
       sum_delx_delq = sum_delx_delq + weights*delx*temp
@@ -156,19 +156,26 @@ contains
       - sum_dely_delq*(sum_delx_dely*sum_delz_sqr - sum_delz_delx*sum_dely_delz) &
       + sum_delz_delq*(sum_delx_dely*sum_dely_delz - sum_delz_delx*sum_dely_sqr)
 !
-   dq_d(1,:,i) = temp*one_by_det
+
+   do p = 1, 5
+      dq_d(1,p,i) = temp(p)*one_by_det
+   end do
 !
    temp = sum_delx_sqr*(sum_dely_delq*sum_delz_sqr - sum_dely_delz*sum_delz_delq) &
       - sum_delx_dely*(sum_delx_delq*sum_delz_sqr - sum_delz_delx*sum_delz_delq) &
       + sum_delz_delx*(sum_delx_delq*sum_dely_delz - sum_delz_delx*sum_dely_delq)
 !
-   dq_d(2,:,i) = temp*one_by_det
+   do p = 1, 5
+      dq_d(2,p,i) = temp(p)*one_by_det
+   end do
 !
    temp = sum_delx_sqr*(sum_dely_sqr*sum_delz_delq - sum_dely_delq*sum_dely_delz) &
       - sum_delx_dely*(sum_delx_dely*sum_delz_delq - sum_delx_delq*sum_dely_delz) &
       + sum_delz_delx*(sum_delx_dely*sum_dely_delq - sum_delx_delq*sum_dely_sqr)
 !
-   dq_d(3,:,i) = temp*one_by_det
+   do p = 1, 5
+      dq_d(3,p,i) = temp(p)*one_by_det
+   end do
 
    !if(i == 83780) then
    !	write(*,*)
