@@ -96,13 +96,13 @@ contains
          dely = y_k - y_i
          delz = z_k - z_i
 !
-         temp = delx*dq_d(1,:,k) + dely*dq_d(2,:,k) + delz*dq_d(3,:,k)
+         temp = delx*dq_d(:,1,k) + dely*dq_d(:,2,k) + delz*dq_d(:,3,k)
          qtilde = q_d(:,k) - 0.5d0*temp
 
          !call venkat_limiter(qtilde, phi_k, i)
          call device_venkat_limiter(q_d, qm_d, min_dist_d, qtilde, phi_k, i)
 !
-         temp = delx*dq_d(1,:,i) + dely*dq_d(2,:,i) + delz*dq_d(3,:,i)
+         temp = delx*dq_d(:,1,i) + dely*dq_d(:,2,i) + delz*dq_d(:,3,i)
          qtilde = q_d(:,i) - 0.5d0*temp
 
          !call venkat_limiter(qtilde, phi_i, i)
@@ -154,7 +154,7 @@ contains
       sum_dely_delz = sum_dely_delz + delt*deln_weights
       sum_delz_delx = sum_delz_delx + deln*dels_weights
 !
-      temp = delx*dq_d(1,:,i) + dely*dq_d(2,:,i) + delz*dq_d(3,:,i)
+      temp = delx*dq_d(:,1,i) + dely*dq_d(:,2,i) + delz*dq_d(:,3,i)
       qtilde = q_d(:,i) - 0.5d0*phi*temp
 
       !call qtilde_to_primitive(qtilde, prim)
@@ -163,7 +163,7 @@ contains
       !call flux_Gwyp(G_i, tan1, tan2, nor, prim)
       call  device_flux_Gwyp(G_i, tan1, tan2, nor, prim)
 !
-      temp = delx*dq_d(1,:,k) + dely*dq_d(2,:,k) + delz*dq_d(3,:,k)
+      temp = delx*dq_d(:,1,k) + dely*dq_d(:,2,k) + delz*dq_d(:,3,k)
       qtilde = q_d(:,k) - 0.5d0*phi*temp
 
       !call qtilde_to_primitive(qtilde, prim)

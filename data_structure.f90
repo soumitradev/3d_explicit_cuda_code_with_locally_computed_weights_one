@@ -103,8 +103,8 @@ contains
       allocate(point%delt(max_points))
       allocate(point%q(5,max_points))
       allocate(point%qm(5,2,max_points))
-      allocate(point%dq(3,5,max_points))
-      allocate(point%dq_temp(3,5,max_points))
+      allocate(point%dq(5,3,max_points))
+      allocate(point%dq_temp(5,3,max_points))
 
       ! allocate(point%U(5,max_points))
       ! allocate(point%delUp(5,max_points))
