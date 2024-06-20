@@ -26,7 +26,7 @@ contains
    ! integer :: conn_d(:, :), nbhs_d(:)
    real*8, intent(out):: dq_d(5, 3, max_points_d), qm_d(5, 2, max_points_d)
    real*8, intent(in) :: x_d(3, max_points_d), q_d(5, max_points_d)
-   integer, intent(in) :: conn_d(40, max_points_d), nbhs_d(max_points_d)
+   integer, intent(in) :: conn_d(max_points_d,40), nbhs_d(max_points_d)
 !
    ! dq_d = point_d%dq
    ! qm_d = point_d%qm
@@ -104,7 +104,7 @@ contains
 !
    do k = 1, nbhs_d(i)
 !
-      nbh = conn_d(k,i)
+      nbh = conn_d(i,k)
 !
       do r = 1, 5
          if(q_d(r,nbh) > qm_d(r,1,i)) then
@@ -229,7 +229,7 @@ sum_delz_delq = 0.0d0
 !
 do k = 1, nbhs_d(i)
 !
-   nbh = conn_d(k,i)
+   nbh = conn_d(i,k)
 !
    x_k = x_d(1,nbh)
    y_k = x_d(2,nbh)

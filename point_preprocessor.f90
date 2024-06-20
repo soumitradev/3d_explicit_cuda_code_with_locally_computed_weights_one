@@ -32,7 +32,7 @@ contains
          & point%min_dist(k),point%tan1(1,k), point%tan1(2,k), point%tan1(3,k), &
          & point%tan2(1,k), point%tan2(2,k), point%tan2(3,k), &
          & point%nor(1,k), point%nor(2,k), point%nor(3,k), &
-         & point%nbhs(k), (point%conn(r,k),r=1,point%nbhs(k))
+         & point%nbhs(k), (point%conn(k,r),r=1,point%nbhs(k))
       enddo
       close(101)
 !

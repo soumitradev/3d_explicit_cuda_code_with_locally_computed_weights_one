@@ -87,7 +87,7 @@ contains
 !
       do j = 1, nbhs_d(i)
 !
-         k = conn_d(j,i)
+         k = conn_d(i,j)
 !
          x_k = x_d(1,k)
          y_k = x_d(2,k)
@@ -127,7 +127,7 @@ contains
 !
    do j = 1, nbhs_d(i)
 !
-      k = conn_d(j,i)
+      k = conn_d(i,j)
 !
       x_k = x_d(1,k)
       y_k = x_d(2,k)
