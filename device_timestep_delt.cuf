@@ -29,7 +29,7 @@ contains
 !
    do r = 1, nbhs_d(i)
 !
-      k = conn_d(r,i)
+      k = conn_d(i,r)
 !
       rho = prim_d(1,k)
       u1 = prim_d(2,k)

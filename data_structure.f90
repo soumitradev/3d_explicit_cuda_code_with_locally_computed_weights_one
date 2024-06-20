@@ -77,7 +77,7 @@ contains
       allocate(point%nor(3,max_points))
       allocate(point%status(max_points))
       allocate(point%nbhs(max_points))
-      allocate(point%conn(40,max_points))
+      allocate(point%conn(max_points,40))
       allocate(point%weights(40,max_points))
       allocate(point%min_dist(max_points))
       allocate(point%xpos_nbhs(max_points))

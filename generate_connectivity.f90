@@ -56,7 +56,7 @@ contains
       point%zneg_nbhs(i) = 0
 !
       do r = 1, point%nbhs(i)
-         k = point%conn(r,i)
+         k = point%conn(i,r)
          xk = point%x(k)
          yk = point%y(k)
          zk = point%z(k)
@@ -132,7 +132,7 @@ contains
       point%zneg_nbhs(i) = 0
 !
       do r = 1, point%nbhs(i)
-         k = point%conn(r,i)
+         k = point%conn(i,r)
          xk = point%x(k)
          yk = point%y(k)
          zk = point%z(k)
@@ -200,7 +200,7 @@ contains
       point%zneg_nbhs(i) = 0
 !
       do r = 1, point%nbhs(i)
-         k = point%conn(r,i)
+         k = point%conn(i,r)
          xk = point%x(k)
          yk = point%y(k)
          zk = point%z(k)
