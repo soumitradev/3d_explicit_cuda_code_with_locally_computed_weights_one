@@ -58,7 +58,6 @@ contains
 
       write (*, *) "Allocating Memory on the GPU"
       call allocate_device_size()
-      call cpu_time(start)
 !
       write (*, *) "Transferring data from host (CPU) to device (GPU)"
       call host_to_device()
@@ -80,6 +79,7 @@ contains
 
       OPEN (UNIT=301, FILE="residue", FORM="FORMATTED", STATUS="REPLACE", ACTION="WRITE")
 !
+      call cpu_time(start)
       do t = 1, max_iters
 
          call device_eval_q_variables<<< grid,tBlock >>> (point_d%prim, point_d%q)
@@ -141,12 +141,16 @@ contains
 
 
       end do
+      call cpu_time(finish)
 
       call device_to_host()
-      call cpu_time(finish)
       time = finish - start
 
       write(*,*) "Total Time on the GPU: ", time
+      write(*,*) "Grid Size: ", max_points
+      write(*,*) "Iterations: ", max_iters
+      write(*,*) "Inner Iterations: ", inner_iterations
+      write(*,*) "RDP: ", time/(max_iters*max_points)
 
 !
    end subroutine
