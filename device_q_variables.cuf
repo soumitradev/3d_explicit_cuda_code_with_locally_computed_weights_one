@@ -14,7 +14,8 @@ contains
    real*8 :: two_times_beta
 
    !device variable
-   real*8  :: prim_d(:,:),q_d(:,:)
+   real*8, intent(in) :: prim_d(5, max_points_d)
+   real*8, intent(out) :: q_d(5, max_points_d)
 !
 !
    k = (blockIdx%x - 1)*blockDim%x + threadIdx%x
