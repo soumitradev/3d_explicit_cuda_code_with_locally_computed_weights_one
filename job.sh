@@ -6,10 +6,10 @@
 #SBATCH --qos=qos_gpu_a100_priority
 #SBATCH --mem=100G
 #SBATCH -t 0-23:00 # time (D-HH:MM)
-#SBATCH --job-name="test"
+#SBATCH --job-name="3d-mfcfd-test"
 #SBATCH -o slurm.%j.out
 #SBATCH -e slurm.%j.err
-#SBATCH --mail-user=p20210043@hyderabad.bits-pilani.ac.in
+#SBATCH --mail-user=f20210781@hyderabad.bits-pilani.ac.in
 #SBATCH --mail-type=ALL
 
 
