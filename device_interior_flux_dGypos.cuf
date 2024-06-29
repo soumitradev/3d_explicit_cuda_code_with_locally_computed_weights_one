@@ -37,11 +37,10 @@ contains
    real*8 :: temp(5), qtilde(5), phi_i(5), phi_k(5), phi(5)
    real*8 :: dels_weights, delt_weights, deln_weights
 !
-!
-   real*8  ::  x_d(:, :), tan1_d(:,:), tan2_d(:,:), nor_d(:,:)
-   integer ::  ypos_nbhs_d(:), ypos_conn_d(:,:), status_d(:)
-   real*8  ::  dq_d(:, :, :), q_d(:, :), qm_d(:, :, :), min_dist_d(:)
-   real*8  ::  flux_residual_d(:,:,:)
+   real*8 ::  x_d(3,max_points_d), tan1_d(3,max_points_d), tan2_d(3,max_points_d), nor_d(3,max_points_d)
+   integer :: ypos_nbhs_d(max_points_d), ypos_conn_d(25,max_points_d), status_d(max_points_d)
+   real*8 ::  dq_d(5,3,max_points_d), q_d(5,max_points_d), qm_d(5,2,max_points_d), min_dist_d(max_points_d)
+   real*8  :: flux_residual_d(6,5,max_points_d)
 
    i = threadIdx%x + (blockIdx%x - 1) * blockDim%x
 
