@@ -15,8 +15,8 @@ contains
    real*8	:: Ubar(5)
    integer	:: k
 
-   real*8  :: prim_d(:,:)
-   real*8  :: tan1_d(:,:), tan2_d(:,:), nor_d(:,:)
+   real*8  :: prim_d(5, max_points_d)
+   real*8  :: tan1_d(3, max_points_d), tan2_d(3, max_points_d), nor_d(3, max_points_d)
    real*8 :: tan1(3), tan2(3), nor(3)
 
    tan1 = tan1_d(:,k)
