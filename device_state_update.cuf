@@ -20,10 +20,10 @@ contains
    integer :: i,  nbh, p, r, status,max_res_point_d,k
    real*8 :: U(5), temp, min_dist
    real*8 ::   sum_res_sqr_d(:), max_res_d,  res_sqr
-   real*8, dimension(:,:), device :: res_sqr_d
-   integer :: status_d(:)
-   real*8  ::   prim_d(:,:), flux_res_d(:,:)
-   real*8  ::   tan1_d(:,:), tan2_d(:,:), nor_d(:,:)
+   real*8, device :: res_sqr_d(2,max_points_d)
+   integer :: status_d(max_points_d)
+   real*8  ::   prim_d(5, max_points_d), flux_res_d(5,max_points_d)
+   real*8  ::   tan1_d(3,max_points_d), tan2_d(3,max_points_d), nor_d(3,max_points_d)
    real*8	:: Ubar(5)
    real*8 :: tan1(3), tan2(3), nor(3)
 
