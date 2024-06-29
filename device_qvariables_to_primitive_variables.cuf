@@ -9,16 +9,11 @@ contains
    attributes(device) subroutine device_qtilde_to_primitive( q, prim)
 !
    implicit none
-!
-   integer :: k
-   real*8, device  :: q(5), prim(5)
+   real*8, intent(in) :: q(5)
+   real*8, intent(out) :: prim(5)
    real*8 :: beta, temp, temp1, temp2
 
    !device variable
-   real*8  :: prim_d(:,:),q_d(:,:)
-   !
-   !
-   !
    beta = -q(5)*0.5d0
    !
    temp = 0.5d0/beta
