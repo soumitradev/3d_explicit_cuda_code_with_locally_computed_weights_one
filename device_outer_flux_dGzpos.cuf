@@ -41,7 +41,7 @@ contains
    real*8 ::  x_d(3,max_points_d), tan1_d(3,max_points_d), tan2_d(3,max_points_d), nor_d(3,max_points_d)
    integer :: nbhs_d(max_points_d), conn_d(max_points_d,40), status_d(max_points_d)
    real*8 ::  dq_d(5,3,max_points_d), q_d(5,max_points_d), qm_d(5,2,max_points_d), min_dist_d(max_points_d)
-   real*8  :: flux_residual_d(6,5,max_points_d)
+   real*8  :: flux_residual_d(5,max_points_d,6)
 
 
    i = threadIdx%x + (blockIdx%x - 1) * blockDim%x
@@ -189,7 +189,7 @@ contains
          + sum_delz_delx*(sum_delx_dely*sum_dely_delf - sum_delx_delf*sum_dely_sqr)
 !
       G = temp*one_by_det
-      flux_residual_d(5,:,i) = G
+      flux_residual_d(:,i,5) = G
 
       ! if(i== 83779) then
       ! 	write(*,*)'flux_residual_d zpos',flux_residual_d(5,1,i),flux_residual_d(5,2,i),flux_residual_d(5,3,i),&

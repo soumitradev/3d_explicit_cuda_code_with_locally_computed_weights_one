@@ -116,9 +116,9 @@ contains
       allocate(point_d%qm(5,2,max_points))
       allocate(point_d%dq(5,3,max_points))
       allocate(point_d%dq_temp(5, 3, max_points))
-      allocate(point_d%temp_wall_pts_flux_res(6,5,max_points))
-      allocate(point_d%temp_interior_pts_flux_res(6,5,max_points))
-      allocate(point_d%temp_outer_pts_flux_res(6,5,max_points))
+      allocate(point_d%temp_wall_pts_flux_res(5,max_points,6))
+      allocate(point_d%temp_interior_pts_flux_res(5,max_points,6))
+      allocate(point_d%temp_outer_pts_flux_res(5,max_points,6))
 
 
       allocate(point_d%D_inv(max_points))

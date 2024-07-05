@@ -110,9 +110,9 @@ contains
       ! allocate(point%delUp(5,max_points))
       ! allocate(point%delUn(4,max_points))
       allocate(point%D_inv(max_points))
-      allocate(point%temp_wall_pts_flux_res(6,5,max_points))
-      allocate(point%temp_interior_pts_flux_res(6,5,max_points))
-      allocate(point%temp_outer_pts_flux_res(6,5,max_points))
+      allocate(point%temp_wall_pts_flux_res(5,max_points,6))
+      allocate(point%temp_interior_pts_flux_res(5,max_points,6))
+      allocate(point%temp_outer_pts_flux_res(5,max_points,6))
 
    end subroutine
 
