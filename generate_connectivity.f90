@@ -72,7 +72,7 @@ contains
          if(dels .le. 0.0d0) then
             point%xpos_nbhs(i) = point%xpos_nbhs(i) + 1
             count = point%xpos_nbhs(i)
-            point%xpos_conn(count,i) = k
+            point%xpos_conn(i,count) = k
          endif
 !
          if(dels .ge. 0.0d0) then
@@ -148,7 +148,7 @@ contains
          if(dels .le. 0.0d0) then
             point%xpos_nbhs(i) = point%xpos_nbhs(i) + 1
             count = point%xpos_nbhs(i)
-            point%xpos_conn(count,i) = k
+            point%xpos_conn(i,count) = k
          endif
 !
          if(dels .ge. 0.0d0) then
@@ -216,7 +216,7 @@ contains
          if(dels .le. 0.0d0) then
             point%xpos_nbhs(i) = point%xpos_nbhs(i) + 1
             count = point%xpos_nbhs(i)
-            point%xpos_conn(count,i) = k
+            point%xpos_conn(i,count) = k
          endif
 !
          if(dels .ge. 0.0d0) then

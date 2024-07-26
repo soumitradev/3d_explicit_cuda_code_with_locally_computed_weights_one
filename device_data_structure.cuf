@@ -97,7 +97,7 @@ contains
       allocate(point_d%yneg_nbhs(max_points))
       allocate(point_d%zpos_nbhs(max_points))
       allocate(point_d%zneg_nbhs(max_points))
-      allocate(point_d%xpos_conn(25,max_points))
+      allocate(point_d%xpos_conn(max_points,25))
       allocate(point_d%xneg_conn(25,max_points))
       allocate(point_d%ypos_conn(25,max_points))
       allocate(point_d%yneg_conn(25,max_points))
