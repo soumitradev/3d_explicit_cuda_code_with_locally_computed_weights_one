@@ -38,7 +38,7 @@ contains
 !
    real*8 ::  x_d(3,max_points_d), tan1_d(3,max_points_d), tan2_d(3,max_points_d), nor_d(3,max_points_d)
    integer :: xpos_nbhs_d(max_points_d), xpos_conn_d(25,max_points_d), status_d(max_points_d)
-   real*8 ::  dq_d(5,3,max_points_d), q_d(5,max_points_d), qm_d(5,2,max_points_d), min_dist_d(max_points_d)
+   real*8 ::  dq_d(5,max_points_d,3), q_d(5,max_points_d), qm_d(5,2,max_points_d), min_dist_d(max_points_d)
    real*8  :: flux_residual_d(5,max_points_d,6)
 
    i = threadIdx%x + (blockIdx%x - 1) * blockDim%x
@@ -90,14 +90,14 @@ contains
             dely = y_k - y_i
             delz = z_k - z_i
 !
-            temp = delx*dq_d(:,1,k) + dely*dq_d(:,2,k) + delz*dq_d(:,3,k)
+            temp = delx*dq_d(:,k,1) + dely*dq_d(:,k,2) + delz*dq_d(:,k,3)
             qtilde = q_d(:,k) - 0.5d0*temp
 
 
             !	call venkat_limiter(qtilde, phi_k, i)
             call device_venkat_limiter(q_d, qm_d,min_dist_d, qtilde, phi_k, i)
 !
-            temp = delx*dq_d(:,1,i) + dely*dq_d(:,2,i) + delz*dq_d(:,3,i)
+            temp = delx*dq_d(:,i,1) + dely*dq_d(:,i,2) + delz*dq_d(:,i,3)
             qtilde = q_d(:,i) - 0.5d0*temp
 
             !	call venkat_limiter(qtilde, phi_i, i)
@@ -148,7 +148,7 @@ contains
          sum_dely_delz = sum_dely_delz + delt*deln_weights
          sum_delz_delx = sum_delz_delx + deln*dels_weights
 !
-         temp = delx*dq_d(:,1,i) + dely*dq_d(:,2,i) + delz*dq_d(:,3,i)
+         temp = delx*dq_d(:,i,1) + dely*dq_d(:,i,2) + delz*dq_d(:,i,3)
          qtilde = q_d(:,i) - 0.5d0*phi*temp
 
          !	call qtilde_to_primitive(qtilde, prim)
@@ -157,7 +157,7 @@ contains
          !	call flux_Gxp(G_i, tan1, tan2, nor, prim)
          call device_flux_Gxp(G_i, tan1, tan2, nor, prim)
 !
-         temp = delx*dq_d(:,1,k) + dely*dq_d(:,2,k) + delz*dq_d(:,3,k)
+         temp = delx*dq_d(:,k,1) + dely*dq_d(:,k,2) + delz*dq_d(:,k,3)
          qtilde = q_d(:,k) - 0.5d0*phi*temp
 
 
